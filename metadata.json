@@ -1,0 +1,7 @@
+{
+  "name": "GrantHunter",
+  "description": "Autonomous Government Contracting AI System utilizing Gemini Live for real-time voice qualification and automated proposal generation.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

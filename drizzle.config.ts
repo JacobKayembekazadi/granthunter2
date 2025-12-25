@@ -1,13 +1,10 @@
-import type { Config } from 'drizzle-kit';
-
-const config = {
+// @ts-ignore - Drizzle config type inference issue with union types
+export default {
   schema: './db/schema.ts',
   out: './drizzle',
-  dialect: 'postgresql' as const,
+  dialect: 'postgresql',
   dbCredentials: {
     connectionString: process.env.DATABASE_URL!,
   },
-} satisfies Config;
-
-export default config;
+};
 

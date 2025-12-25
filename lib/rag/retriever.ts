@@ -36,7 +36,8 @@ export async function retrievePastPerformance(
       LIMIT ${limit}
     `);
 
-    return results.rows.map((row: any) => ({
+    // db.execute returns an array directly, not an object with rows
+    return (results as any[]).map((row: any) => ({
       id: row.id,
       title: row.title,
       agency: row.agency || '',

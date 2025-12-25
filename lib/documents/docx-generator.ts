@@ -22,7 +22,7 @@ export async function generateDOCX(proposalId: string): Promise<Buffer> {
     .orderBy(proposalSections.order);
 
   // Build document
-  const children: (Paragraph | Paragraph[])[] = [
+  const children: Paragraph[] = [
     new Paragraph({
       text: proposal.name,
       heading: HeadingLevel.TITLE,

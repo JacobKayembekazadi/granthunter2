@@ -1,4 +1,4 @@
-import { serve } from 'inngest';
+import { serve } from 'inngest/next';
 import { inngest } from './client';
 // Import all functions
 import { scanOpportunities } from './functions/scan-opportunities';

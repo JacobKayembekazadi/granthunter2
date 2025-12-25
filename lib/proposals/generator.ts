@@ -40,10 +40,15 @@ export async function generateProposalSection(
   }
 
   // Retrieve relevant past performance
-  const pastPerformanceContext = await retrievePastPerformance(
+  const pastPerformanceResults = await retrievePastPerformance(
     section.title + ' ' + rfpRequirements,
     3 // Top 3 matches
   );
+
+  // Convert past performance results to context string
+  const pastPerformanceContext = pastPerformanceResults
+    .map(pp => `${pp.title} (${pp.agency}): ${pp.description}`)
+    .join('\n\n');
 
   // Generate section content
   const content = await generateWithModel({
@@ -53,7 +58,7 @@ export async function generateProposalSection(
       rfpRequirements,
       pastPerformanceContext
     ),
-    context: opportunity.rfpContent || opportunity.description,
+    context: opportunity.rfpContent || opportunity.description || undefined,
     temperature: 0.7,
     maxTokens: 3000,
   });

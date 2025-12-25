@@ -1,6 +1,6 @@
 import { inngest } from '../client';
 import { db } from '@/db';
-import { proposals, proposalSections, jobLogs } from '@/db/schema';
+import { proposals, proposalSections, jobLogs, opportunities } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
 export const generateProposal = inngest.createFunction(
@@ -61,14 +61,14 @@ export const generateProposal = inngest.createFunction(
     });
 
     // 2. Get section templates
-    const sections = await step.run('get-sections', async () => {
+      const sections = await step.run('get-sections', async () => {
       const { getSectionTemplates } = await import('@/lib/proposals/sections');
       const [opportunity] = await db
         .select()
         .from(opportunities)
         .where(eq(opportunities.id, proposal.opportunityId!))
         .limit(1);
-      return getSectionTemplates(opportunity?.rfpContent);
+      return getSectionTemplates(opportunity?.rfpContent || undefined);
     });
 
     // 3. Generate sections sequentially
@@ -100,7 +100,14 @@ export const generateProposal = inngest.createFunction(
           .map(r => r.text)
           .join('\n');
 
-        await generateProposalSection(proposalId, section, rfpRequirements);
+        // Convert template to ProposalSection format
+        const proposalSection = {
+          number: section.number,
+          title: section.title,
+          content: '', // Will be generated
+          order: section.order,
+        };
+        await generateProposalSection(proposalId, proposalSection, rfpRequirements);
       });
     }
 
@@ -133,12 +140,17 @@ export const generateProposal = inngest.createFunction(
       const complianceResults = await checkCompliance(fullContent, requirements);
 
       // Update proposal with compliance results
+      // Note: metadata field doesn't exist in schema, storing in configuration instead
+      const complianceScore = requirements.length > 0 
+        ? complianceResults.filter(r => r.addressed).length / requirements.length 
+        : 0;
+      
       await db
         .update(proposals)
         .set({
-          metadata: {
+          configuration: {
             compliance: complianceResults,
-            complianceScore: complianceResults.filter(r => r.addressed).length / requirements.length,
+            complianceScore,
           },
         })
         .where(eq(proposals.id, proposalId));

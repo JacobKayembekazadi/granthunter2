@@ -7,9 +7,10 @@ import { inngest } from '@/inngest/client';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -20,7 +21,7 @@ export async function GET(
     const [agent] = await db
       .select()
       .from(searchAgents)
-      .where(eq(searchAgents.id, params.id))
+      .where(eq(searchAgents.id, id))
       .limit(1);
 
     if (!agent) {
@@ -36,9 +37,10 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -56,7 +58,7 @@ export async function PATCH(
     const [agent] = await db
       .update(searchAgents)
       .set(updates)
-      .where(eq(searchAgents.id, params.id))
+      .where(eq(searchAgents.id, id))
       .returning();
 
     if (!agent) {
@@ -72,9 +74,10 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -84,7 +87,7 @@ export async function DELETE(
 
     await db
       .delete(searchAgents)
-      .where(eq(searchAgents.id, params.id));
+      .where(eq(searchAgents.id, id));
 
     return NextResponse.json({ success: true });
   } catch (error) {

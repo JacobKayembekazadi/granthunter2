@@ -6,9 +6,10 @@ import { eq } from 'drizzle-orm';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -19,7 +20,7 @@ export async function GET(
     const [opportunity] = await db
       .select()
       .from(opportunities)
-      .where(eq(opportunities.id, params.id))
+      .where(eq(opportunities.id, id))
       .limit(1);
 
     if (!opportunity) {
@@ -35,9 +36,10 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -59,7 +61,7 @@ export async function PATCH(
     const [opportunity] = await db
       .update(opportunities)
       .set(updates)
-      .where(eq(opportunities.id, params.id))
+      .where(eq(opportunities.id, id))
       .returning();
 
     if (!opportunity) {
@@ -75,9 +77,10 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -87,7 +90,7 @@ export async function DELETE(
 
     await db
       .delete(opportunities)
-      .where(eq(opportunities.id, params.id));
+      .where(eq(opportunities.id, id));
 
     return NextResponse.json({ success: true });
   } catch (error) {

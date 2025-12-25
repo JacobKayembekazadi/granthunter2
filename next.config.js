@@ -10,10 +10,10 @@ const nextConfig = {
   images: {
     domains: [],
   },
+  // Note: Environment variables are handled by Vercel
+  // Don't expose sensitive keys via env config
   env: {
-    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
-    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
-    DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY,
+    // Only expose public env vars here if needed
   },
 };
 

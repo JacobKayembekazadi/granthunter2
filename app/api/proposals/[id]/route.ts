@@ -6,9 +6,10 @@ import { eq } from 'drizzle-orm';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -19,7 +20,7 @@ export async function GET(
     const [proposal] = await db
       .select()
       .from(proposals)
-      .where(eq(proposals.id, params.id))
+      .where(eq(proposals.id, id))
       .limit(1);
 
     if (!proposal) {

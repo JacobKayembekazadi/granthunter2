@@ -1,0 +1,12 @@
+.env.local
+.env*.local
+.next
+node_modules
+.git
+.specstory
+*.log
+*.md
+!README.md
+db/migrations
+scripts
+

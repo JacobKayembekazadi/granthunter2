@@ -4,9 +4,10 @@ import { inngest } from '@/inngest/client';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -17,7 +18,7 @@ export async function POST(
     // Trigger scan
     await inngest.send({
       name: 'agent/scan',
-      data: { agentId: params.id },
+      data: { agentId: id },
     });
 
     return NextResponse.json({ message: 'Scan triggered' });

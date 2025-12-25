@@ -6,9 +6,10 @@ import { createClient as createSupabaseClient } from '@/lib/supabase/client';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -24,18 +25,18 @@ export async function POST(
     let extension: string;
 
     if (format === 'pdf') {
-      buffer = await generatePDF(params.id);
+      buffer = await generatePDF(id);
       mimeType = 'application/pdf';
       extension = 'pdf';
     } else {
-      buffer = await generateDOCX(params.id);
+      buffer = await generateDOCX(id);
       mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
       extension = 'docx';
     }
 
     // Upload to Supabase Storage
     const supabaseClient = createSupabaseClient();
-    const fileName = `proposal-${params.id}-${Date.now()}.${extension}`;
+    const fileName = `proposal-${id}-${Date.now()}.${extension}`;
     const { data: uploadData, error: uploadError } = await supabaseClient.storage
       .from('proposals')
       .upload(fileName, buffer, {

@@ -75,13 +75,16 @@ const Artifacts: React.FC = () => {
       toast.success("Intel metadata revised");
     } else {
       // Exclude id and size from formData to avoid duplicates (we generate these)
-      const { id: _, size: __, ...rest } = formData;
+      // Ensure all required fields are present (we already checked name exists)
       const newArt: Artifact = {
         id: `ART-${Math.floor(Math.random() * 900) + 100}`,
+        name: formData.name,
+        type: formData.type || 'pdf',
+        status: formData.status || 'ready',
+        opportunityId: formData.opportunityId || '',
         size: `${(Math.random() * 5 + 0.1).toFixed(1)} MB`,
         date: dateStr,
         oppName: selectedOpp?.title || 'Unknown',
-        ...rest
       };
       setArtifacts(prev => [newArt, ...prev]);
       toast.success("New artifact indexed to repository");

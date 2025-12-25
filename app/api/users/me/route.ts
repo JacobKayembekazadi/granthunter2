@@ -33,10 +33,19 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ user: userData });
-  } catch (error) {
-    console.error('Error fetching user:', error);
+  } catch (error: any) {
+    console.error('Error fetching user:', {
+      message: error?.message,
+      stack: error?.stack,
+      name: error?.name,
+      code: error?.code,
+    });
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'Internal server error',
+        message: error?.message || 'Unknown error',
+        details: process.env.NODE_ENV === 'development' ? error?.stack : undefined,
+      },
       { status: 500 }
     );
   }

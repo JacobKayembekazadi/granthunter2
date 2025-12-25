@@ -72,10 +72,19 @@ export async function GET(request: NextRequest) {
     await setCached(cacheKey, insights, 3600); // 1 hour
 
     return NextResponse.json({ insights });
-  } catch (error) {
-    console.error('Error generating dashboard insights:', error);
+  } catch (error: any) {
+    console.error('Error generating dashboard insights:', {
+      message: error?.message,
+      stack: error?.stack,
+      name: error?.name,
+      code: error?.code,
+    });
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'Internal server error',
+        message: error?.message || 'Unknown error',
+        details: process.env.NODE_ENV === 'development' ? error?.stack : undefined,
+      },
       { status: 500 }
     );
   }

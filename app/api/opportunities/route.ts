@@ -147,9 +147,21 @@ export async function GET(request: NextRequest) {
       page,
       limit,
     });
-  } catch (error) {
-    console.error('Error fetching opportunities:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Error fetching opportunities:', {
+      message: error?.message,
+      stack: error?.stack,
+      name: error?.name,
+      code: error?.code,
+    });
+    return NextResponse.json(
+      { 
+        error: 'Internal server error',
+        message: error?.message || 'Unknown error',
+        details: process.env.NODE_ENV === 'development' ? error?.stack : undefined,
+      },
+      { status: 500 }
+    );
   }
 }
 
@@ -184,9 +196,21 @@ export async function POST(request: NextRequest) {
       .returning();
 
     return NextResponse.json({ opportunity }, { status: 201 });
-  } catch (error) {
-    console.error('Error creating opportunity:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Error creating opportunity:', {
+      message: error?.message,
+      stack: error?.stack,
+      name: error?.name,
+      code: error?.code,
+    });
+    return NextResponse.json(
+      { 
+        error: 'Internal server error',
+        message: error?.message || 'Unknown error',
+        details: process.env.NODE_ENV === 'development' ? error?.stack : undefined,
+      },
+      { status: 500 }
+    );
   }
 }
 

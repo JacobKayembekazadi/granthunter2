@@ -9,7 +9,9 @@
     "lint": "next lint",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "verify:env": "tsx scripts/check-vercel-env.ts",
+    "verify:setup": "tsx scripts/verify-setup.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.20.0",

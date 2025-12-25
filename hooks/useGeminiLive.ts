@@ -70,9 +70,14 @@ export const useGeminiLive = () => {
       streamRef.current = stream;
 
       // 3. Initialize Gemini Client
-      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+      // Note: API key should be accessed via API route for security
+      // For now, check for NEXT_PUBLIC_ prefix (client-side only)
+      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
       if (!apiKey) {
-        throw new Error("API Key not found in environment variables");
+        // Don't throw error - gracefully handle missing key
+        setError("Gemini API key not configured for client-side use. Please configure NEXT_PUBLIC_GEMINI_API_KEY or use server-side API route.");
+        setConnectionState(ConnectionState.ERROR);
+        return;
       }
 
       const ai = new GoogleGenAI({ apiKey });

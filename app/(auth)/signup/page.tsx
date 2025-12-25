@@ -19,7 +19,7 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -31,8 +31,15 @@ export default function SignupPage() {
 
       if (error) throw error;
 
-      toast.success('Account created! Please check your email to verify.');
-      router.push('/login');
+      // If email confirmation is disabled, user is automatically logged in
+      if (data.session) {
+        toast.success('Account created successfully!');
+        router.push('/');
+      } else {
+        // This shouldn't happen if email confirmation is disabled, but handle it just in case
+        toast.success('Account created! Please check your email to verify.');
+        router.push('/login');
+      }
     } catch (error: any) {
       toast.error(error.message || 'Signup failed');
     } finally {

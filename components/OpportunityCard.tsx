@@ -65,11 +65,21 @@ const OpportunityCard: React.FC<Props> = ({ data, onSelect, onEdit, onDelete }) 
         <div className="flex items-center space-x-4 text-slate-400">
           <div>
             <span className="text-slate-600 block text-[10px] uppercase">Value</span>
-            <span className="text-slate-300">{data.value}</span>
+            <span className="text-slate-300">{data.value || 'N/A'}</span>
           </div>
           <div>
             <span className="text-slate-600 block text-[10px] uppercase">Due</span>
-            <span className="text-slate-300">{data.dueDate}</span>
+            <span className={`text-slate-300 ${
+              data.dueDate && (() => {
+                const dueDate = typeof data.dueDate === 'string' ? new Date(data.dueDate) : data.dueDate;
+                const daysUntil = Math.ceil((dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                if (daysUntil <= 3) return 'text-red-400 font-bold';
+                if (daysUntil <= 7) return 'text-amber-400';
+                return '';
+              })()
+            }`}>
+              {data.dueDate ? (typeof data.dueDate === 'string' ? data.dueDate : new Date(data.dueDate).toLocaleDateString()) : 'N/A'}
+            </span>
           </div>
         </div>
         <div className={`px-2 py-1 rounded text-[10px] uppercase font-bold

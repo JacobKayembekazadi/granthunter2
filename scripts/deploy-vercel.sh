@@ -24,3 +24,4 @@ echo "3. Test the deployed application"
 echo ""
 echo "🔗 View deployment: https://vercel.com/dashboard"
 
+

@@ -44,3 +44,4 @@ CREATE POLICY "Allow users to delete their organization's files" ON storage.obje
     AND auth.role() = 'authenticated'
   );
 
+

@@ -132,3 +132,4 @@ If using Inngest for background jobs:
 - **Database**: Supabase free tier includes connection pooling
 - **Storage**: Supabase Storage for proposal documents
 
+

@@ -24,3 +24,4 @@ foreach ($key in $envVars.Keys) {
 
 Write-Host "`nOr use Vercel Dashboard → Settings → Environment Variables" -ForegroundColor Cyan
 
+

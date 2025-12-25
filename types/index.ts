@@ -1,13 +1,20 @@
 export interface Opportunity {
   id: string;
+  samGovId?: string | null;
   title: string;
   agency: string;
-  value: string;
-  dueDate: string;
+  value: string | null;
+  dueDate: string | Date | null;
   status: 'new' | 'analyzing' | 'drafting' | 'submitted';
   matchScore: number;
-  naicsCode: string;
-  description: string;
+  naicsCode: string | null;
+  description: string | null;
+  rfpDocumentUrl?: string | null;
+  rfpContent?: string | null;
+  metadata?: Record<string, any> | null;
+  organizationId?: string | null;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
 }
 
 export interface Artifact {

@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { db } from '@/db';
-import { opportunities } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { getOpportunityWithRelations } from '@/lib/db/dashboard-queries';
 
 export async function GET(
   request: NextRequest,
@@ -17,17 +15,13 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [opportunity] = await db
-      .select()
-      .from(opportunities)
-      .where(eq(opportunities.id, id))
-      .limit(1);
+    const result = await getOpportunityWithRelations(id);
 
-    if (!opportunity) {
+    if (!result) {
       return NextResponse.json({ error: 'Opportunity not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ opportunity });
+    return NextResponse.json(result);
   } catch (error) {
     console.error('Error fetching opportunity:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

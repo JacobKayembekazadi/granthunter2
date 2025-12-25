@@ -3,3 +3,4 @@ export default function Minimal() {
   return <div>Minimal test works</div>;
 }
 
+

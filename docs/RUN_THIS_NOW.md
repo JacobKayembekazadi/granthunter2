@@ -57,3 +57,4 @@ You should see 10 tables: organizations, users, opportunities, search_agents, ag
 **Once you've run the SQL, let me know and I'll verify everything is set up correctly!** 🎉
 
 
+

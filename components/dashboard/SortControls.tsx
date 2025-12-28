@@ -44,3 +44,5 @@ const SortControls: React.FC<SortControlsProps> = ({ sort, onSortChange }) => {
 
 export default SortControls;
 
+
+

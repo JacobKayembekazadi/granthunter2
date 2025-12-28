@@ -51,3 +51,5 @@ export const InsightsPanelSkeleton: React.FC = () => {
   );
 };
 
+
+

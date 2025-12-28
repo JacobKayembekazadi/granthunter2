@@ -94,7 +94,7 @@ grant-hunter/
 ├── lib/
 │   ├── ai/ (clients, orchestrator, prompts, cache)
 │   ├── sam-gov/ (client, parser, types)
-│   ├── proposals/ (generator, sections, compliance-matrix, rag-context)
+│   ├── proposals/ (generator, sections, compliance-matrix)
 │   ├── rag/ (embeddings, retriever, context-builder)
 │   ├── documents/ (docx-generator, pdf-generator)
 │   ├── supabase/ (client, server, middleware)

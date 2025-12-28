@@ -137,12 +137,3 @@ export async function buildDashboardInsightsContext(
   return context;
 }
 
-function formatPastPerformancePatterns(patterns: DashboardContext['pastPerformance']['patterns']): string {
-  return `
-Top Agencies by Past Performance:
-${patterns.topAgencies.map((agency, i) => `${i + 1}. ${agency}`).join('\n')}
-
-Historical Win Rate: ${patterns.winRate.toFixed(1)}%
-  `.trim();
-}
-

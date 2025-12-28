@@ -43,3 +43,5 @@ If errors persist, verify:
 - For Supabase pooler: Use port 6543 with SSL
 - For direct connection: Use port 5432
 
+
+

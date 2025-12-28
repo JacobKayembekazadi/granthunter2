@@ -360,3 +360,5 @@ const OpportunityDetailModal: React.FC<OpportunityDetailModalProps> = ({
 
 export default OpportunityDetailModal;
 
+
+

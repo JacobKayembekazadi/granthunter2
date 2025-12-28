@@ -103,3 +103,5 @@ const AIInsightsPanel: React.FC<AIInsightsPanelProps> = ({
 
 export default AIInsightsPanel;
 
+
+

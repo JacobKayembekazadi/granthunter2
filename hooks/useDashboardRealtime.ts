@@ -82,3 +82,5 @@ export function useDashboardRealtime(options: UseDashboardRealtimeOptions = {}) 
   }, [supabase, onOpportunityChange, onProposalChange, onAgentChange]);
 }
 
+
+

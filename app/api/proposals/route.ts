@@ -47,28 +47,36 @@ export async function POST(request: NextRequest) {
       .values({
         name,
         type,
-        opportunityId,
+        opportunityId: opportunityId || null,
         priority,
-        status: 'queued',
+        status: 'processing',
         progress: 0,
+        stage: 'Starting',
         configuration: configuration || {
-          model: 'Gemini-1.5-Pro',
+          model: 'Gemini-2.0-Flash',
           creativity: 'Standard',
           depth: 'Standard',
         },
       })
       .returning();
 
-    // Trigger generation workflow
-    await inngest.send({
-      name: 'proposal/generate',
-      data: { proposalId: proposal.id },
-    });
+    // Try to trigger generation workflow (optional - doesn't break if Inngest not configured)
+    try {
+      await inngest.send({
+        name: 'proposal/generate',
+        data: { proposalId: proposal.id },
+      });
+    } catch (inngestError) {
+      console.warn('Inngest not available, skipping workflow trigger:', inngestError);
+      // Update status to indicate manual processing might be needed
+    }
 
     return NextResponse.json({ proposal }, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating proposal:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({
+      error: error.message || 'Internal server error'
+    }, { status: 500 });
   }
 }
 

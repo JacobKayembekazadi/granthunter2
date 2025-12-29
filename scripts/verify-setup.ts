@@ -32,7 +32,7 @@ function addResult(name: string, status: 'success' | 'error' | 'warning', messag
 
 async function verifyEnvironmentVariables() {
   console.log('\n📋 Checking Environment Variables...\n');
-  
+
   const requiredVars = [
     'DATABASE_URL',
     'NEXT_PUBLIC_SUPABASE_URL',
@@ -95,8 +95,9 @@ async function verifyDatabaseConnection() {
   console.log('\n🗄️  Testing Database Connection...\n');
 
   try {
-    // Try a simple query
-    const testQuery = await db.execute({ sql: 'SELECT 1 as test', args: [] });
+    // Try a simple query using Drizzle's sql template
+    const { sql } = await import('drizzle-orm');
+    const testQuery = await db.execute(sql`SELECT 1 as test`);
     addResult(
       'Database Connection',
       'success',
@@ -121,7 +122,7 @@ async function verifySupabaseConnection() {
   try {
     const supabase = await createClient();
     const { data, error } = await supabase.auth.getUser();
-    
+
     if (error) {
       // This is expected if no user is logged in - it just means the connection works
       addResult(
@@ -157,7 +158,7 @@ async function verifyRedisConnection() {
     // Test Redis connection with a simple ping
     await redis.set('test:connection', 'ok', { ex: 10 });
     const value = await redis.get('test:connection');
-    
+
     if (value === 'ok') {
       addResult(
         'Redis Connection',
@@ -303,7 +304,7 @@ async function main() {
 
   await verifyEnvironmentVariables();
   await verifyAPIRoutes();
-  
+
   // Only test connections if in Node.js environment
   if (typeof window === 'undefined') {
     await verifyDatabaseConnection();

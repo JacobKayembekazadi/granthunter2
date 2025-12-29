@@ -1,12 +1,9 @@
-
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Radar, Plus, Search, Trash2, Play, Pause,
-  X, Zap, Cpu, Signal, ChevronRight, Activity, Target, ShieldCheck,
-  Sparkles, TrendingUp, BarChart3, History, Globe, Brain, RefreshCw, Layers,
-  HelpCircle, Info, ArrowRight, CheckCircle2, Clock
+  Radar, Plus, Search, X, ChevronRight, Activity, Target,
+  Sparkles, History, Brain, RefreshCw, HelpCircle, CheckCircle2, Clock
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -34,32 +31,8 @@ interface Agent {
 }
 
 const Hunter: React.FC = () => {
-  const [agents, setAgents] = useState<Agent[]>([
-    {
-      id: 'AG-99',
-      name: 'Cybersecurity Opportunities',
-      target: 'NAICS 541512, Keywords: cybersecurity, cloud security',
-      status: 'Active',
-      hits: 142,
-      lastRun: '2m ago',
-      suggestions: [
-        {
-          id: 's1',
-          type: 'expansion',
-          title: 'Add related NAICS codes',
-          description: 'Including NAICS 541519 could capture 30% more relevant opportunities.',
-          confidence: 92,
-          reasoning: 'Based on analysis of 14 similar contracts awarded in the last 6 months.',
-          impact: 'High',
-          marketIntel: 'Low competition in this segment - only 12% overlap with existing contractors.',
-          historicalPrecedent: { title: 'DoD Cloud Security Phase IV', agency: 'DoD', value: '$45M' },
-          suggestedValue: 'NAICS 541512, 541519, Keywords: cybersecurity, cloud security'
-        }
-      ]
-    },
-    { id: 'AG-01', name: 'Defense Drone Contracts', target: 'Keywords: Drone, UAV, Defense', status: 'Active', hits: 12, lastRun: '15m ago', suggestions: [] },
-  ]);
-
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -67,6 +40,31 @@ const Hunter: React.FC = () => {
   const [showHelp, setShowHelp] = useState(false);
 
   const selectedAgent = agents.find(a => a.id === selectedId);
+
+  // Fetch agents from API
+  const fetchAgents = async () => {
+    try {
+      const response = await fetch('/api/agents');
+      if (response.ok) {
+        const data = await response.json();
+        setAgents(data.agents.map((a: any) => ({
+          ...a,
+          hits: a.hits || 0,
+          lastRun: a.lastRun ? new Date(a.lastRun).toLocaleString() : 'Never',
+          suggestions: [],
+        })));
+      }
+    } catch (error) {
+      console.error('Error fetching agents:', error);
+      toast.error('Failed to load search agents');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAgents();
+  }, []);
 
   const generateAutonomousInsights = async () => {
     if (!selectedAgent) return;
@@ -104,30 +102,92 @@ const Hunter: React.FC = () => {
     }
   };
 
-  const applySuggestion = (sug: Suggestion) => {
+  const applySuggestion = async (sug: Suggestion) => {
     if (!selectedAgent || !sug.suggestedValue) return;
-    setAgents(prev => prev.map(a =>
-      a.id === selectedAgent.id ? {
-        ...a,
-        target: sug.suggestedValue!,
-        suggestions: a.suggestions.filter(s => s.id !== sug.id)
-      } : a
-    ));
-    toast.success("Search criteria updated successfully!");
+
+    try {
+      const response = await fetch(`/api/agents/${selectedAgent.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target: sug.suggestedValue }),
+      });
+
+      if (response.ok) {
+        setAgents(prev => prev.map(a =>
+          a.id === selectedAgent.id ? {
+            ...a,
+            target: sug.suggestedValue!,
+            suggestions: a.suggestions.filter(s => s.id !== sug.id)
+          } : a
+        ));
+        toast.success("Search criteria updated successfully!");
+      }
+    } catch (error) {
+      toast.error("Failed to update search criteria");
+    }
   };
 
-  const handleCreateAgent = () => {
+  const handleCreateAgent = async () => {
     if (!newAgent.name) return toast.error("Please enter a name for your search");
-    const id = `AG-${Math.floor(Math.random() * 90) + 10}`;
-    setAgents([...agents, { ...newAgent, id, status: 'Active', hits: 0, lastRun: 'Just now', suggestions: [] }]);
-    setIsAdding(false);
-    setNewAgent({ name: '', target: '' });
-    toast.success("Search agent created! It will automatically find matching opportunities.");
+
+    try {
+      const response = await fetch('/api/agents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newAgent.name,
+          target: newAgent.target,
+          status: 'Active',
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAgents(prev => [{
+          ...data.agent,
+          hits: 0,
+          lastRun: 'Just now',
+          suggestions: [],
+        }, ...prev]);
+        setIsAdding(false);
+        setNewAgent({ name: '', target: '' });
+        toast.success("Search agent created! It will automatically find matching opportunities.");
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Failed to create agent");
+      }
+    } catch (error) {
+      toast.error("Failed to create search agent");
+    }
   };
+
+  const handleDeleteAgent = async (id: string) => {
+    try {
+      const response = await fetch(`/api/agents/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setAgents(agents.filter(a => a.id !== id));
+        if (selectedId === id) setSelectedId(null);
+        toast.success("Search agent deleted");
+      }
+    } catch (error) {
+      toast.error("Failed to delete search agent");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <RefreshCw className="w-8 h-8 text-blue-400 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col gap-8 animate-in fade-in duration-500 pb-20">
-      {/* Welcome Banner - Shows first time or when no agents */}
+      {/* Welcome Banner */}
       <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 border border-blue-500/30 rounded-2xl p-6">
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-4">
@@ -145,13 +205,11 @@ const Hunter: React.FC = () => {
           <button
             onClick={() => setShowHelp(!showHelp)}
             className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-            title="Learn more"
           >
             <HelpCircle className="w-5 h-5 text-slate-400" />
           </button>
         </div>
 
-        {/* How it works - expandable */}
         {showHelp && (
           <div className="mt-6 pt-6 border-t border-white/10 grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="flex items-start gap-3">
@@ -182,8 +240,8 @@ const Hunter: React.FC = () => {
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard icon={Activity} label="Active Searches" value={agents.filter(a => a.status === 'Active').length.toString()} />
-        <StatCard icon={Target} label="Opportunities Found" value={agents.reduce((sum, a) => sum + a.hits, 0).toLocaleString()} />
-        <StatCard icon={Clock} label="Last Scan" value="2m ago" />
+        <StatCard icon={Target} label="Opportunities Found" value={agents.reduce((sum, a) => sum + (a.hits || 0), 0).toLocaleString()} />
+        <StatCard icon={Clock} label="Last Scan" value="Recently" />
         <StatCard icon={CheckCircle2} label="Status" value="Online" highlight />
       </div>
 
@@ -238,7 +296,7 @@ const Hunter: React.FC = () => {
                       <div>
                         <div className="font-semibold">{agent.name}</div>
                         <div className={`text-xs mt-1 ${selectedId === agent.id ? 'text-white/70' : 'text-slate-500'}`}>
-                          {agent.hits} opportunities found • Last scan: {agent.lastRun}
+                          {agent.hits || 0} opportunities • Last: {agent.lastRun}
                         </div>
                       </div>
                     </div>
@@ -279,7 +337,6 @@ const Hunter: React.FC = () => {
                     onClick={generateAutonomousInsights}
                     disabled={isAnalyzing}
                     className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-sm text-slate-300 transition-colors"
-                    title="Get AI recommendations"
                   >
                     <RefreshCw className={`w-4 h-4 ${isAnalyzing ? 'animate-spin' : ''}`} />
                     {isAnalyzing ? 'Analyzing...' : 'Get AI Tips'}
@@ -297,7 +354,6 @@ const Hunter: React.FC = () => {
                   <div className="p-4 bg-slate-800/50 border border-slate-700/50 rounded-xl">
                     <p className="text-slate-300 text-sm">{selectedAgent.target}</p>
                   </div>
-                  <p className="text-xs text-slate-600">This is what your agent looks for when scanning SAM.gov</p>
                 </div>
 
                 {/* AI Recommendations */}
@@ -307,78 +363,31 @@ const Hunter: React.FC = () => {
                       <Sparkles className="w-4 h-4 text-blue-400" />
                       AI Recommendations
                     </h4>
-                    {selectedAgent.suggestions.length > 0 && (
-                      <span className="text-xs text-blue-400">
-                        {selectedAgent.suggestions.length} suggestion{selectedAgent.suggestions.length !== 1 ? 's' : ''}
-                      </span>
-                    )}
                   </div>
 
                   {isAnalyzing ? (
                     <div className="p-8 text-center">
                       <RefreshCw className="w-8 h-8 text-blue-400 animate-spin mx-auto mb-4" />
-                      <p className="text-slate-400 text-sm">
-                        Analyzing your search criteria and market data...
-                      </p>
+                      <p className="text-slate-400 text-sm">Analyzing your search criteria...</p>
                     </div>
                   ) : selectedAgent.suggestions.length === 0 ? (
                     <div className="p-8 border border-dashed border-slate-700 rounded-xl text-center">
                       <Brain className="w-10 h-10 text-slate-700 mx-auto mb-4" />
-                      <p className="text-slate-500 text-sm mb-4">
-                        No recommendations yet. Click "Get AI Tips" to analyze your search and get suggestions.
-                      </p>
-                      <button
-                        onClick={generateAutonomousInsights}
-                        className="text-blue-400 text-sm hover:text-blue-300"
-                      >
-                        Generate Recommendations →
-                      </button>
+                      <p className="text-slate-500 text-sm mb-4">Click "Get AI Tips" to analyze your search.</p>
                     </div>
                   ) : (
                     <div className="space-y-4">
                       {selectedAgent.suggestions.map((sug) => (
-                        <div key={sug.id} className="p-5 bg-slate-800/50 border border-slate-700/50 rounded-xl space-y-4 hover:border-blue-500/30 transition-colors">
+                        <div key={sug.id} className="p-5 bg-slate-800/50 border border-slate-700/50 rounded-xl space-y-4">
                           <div className="flex justify-between items-start">
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2">
-                                <span className="px-2 py-0.5 bg-blue-500/20 border border-blue-500/30 rounded-full text-[10px] font-bold text-blue-400 uppercase">
-                                  {sug.type}
-                                </span>
-                                <span className={`text-[10px] font-bold uppercase ${sug.impact === 'High' ? 'text-green-400' :
-                                    sug.impact === 'Medium' ? 'text-yellow-400' : 'text-slate-400'
-                                  }`}>
-                                  {sug.impact} Impact
-                                </span>
-                              </div>
-                              <h5 className="text-white font-semibold">{sug.title}</h5>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-2xl font-bold text-blue-400">{sug.confidence}%</div>
-                              <div className="text-[10px] text-slate-500">Confidence</div>
-                            </div>
+                            <h5 className="text-white font-semibold">{sug.title}</h5>
+                            <div className="text-2xl font-bold text-blue-400">{sug.confidence}%</div>
                           </div>
-
                           <p className="text-sm text-slate-400">{sug.description}</p>
-
-                          <div className="p-3 bg-slate-900/50 rounded-lg border border-slate-700/50">
-                            <div className="text-[10px] font-bold text-slate-500 uppercase mb-1">Why this matters</div>
-                            <p className="text-xs text-slate-400 italic">"{sug.reasoning}"</p>
-                          </div>
-
-                          {sug.historicalPrecedent && (
-                            <div className="flex items-center gap-3 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
-                              <History className="w-4 h-4 text-green-400" />
-                              <div className="text-xs">
-                                <span className="text-green-400 font-semibold">Similar win: </span>
-                                <span className="text-slate-400">{sug.historicalPrecedent.title} ({sug.historicalPrecedent.agency}) - {sug.historicalPrecedent.value}</span>
-                              </div>
-                            </div>
-                          )}
-
                           {sug.suggestedValue && (
                             <button
                               onClick={() => applySuggestion(sug)}
-                              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition-colors"
+                              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold"
                             >
                               <CheckCircle2 className="w-4 h-4" />
                               Apply This Recommendation
@@ -392,16 +401,9 @@ const Hunter: React.FC = () => {
 
                 {/* Actions */}
                 <div className="pt-6 border-t border-slate-800 flex gap-4">
-                  <button className="flex-1 px-4 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white rounded-xl text-sm font-semibold transition-colors">
-                    Run Manual Scan
-                  </button>
                   <button
-                    onClick={() => {
-                      setAgents(agents.filter(a => a.id !== selectedAgent.id));
-                      setSelectedId(null);
-                      toast.success("Search agent deleted");
-                    }}
-                    className="px-4 py-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 rounded-xl text-sm font-semibold transition-colors"
+                    onClick={() => handleDeleteAgent(selectedAgent.id)}
+                    className="px-4 py-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 rounded-xl text-sm font-semibold"
                   >
                     Delete Agent
                   </button>
@@ -430,36 +432,28 @@ const Hunter: React.FC = () => {
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-300">Search Name</label>
                 <input
-                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder:text-slate-600 focus:border-blue-500 focus:outline-none transition-colors"
+                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder:text-slate-600 focus:border-blue-500 focus:outline-none"
                   placeholder="e.g., IT Services Opportunities"
                   value={newAgent.name}
                   onChange={e => setNewAgent({ ...newAgent, name: e.target.value })}
                 />
-                <p className="text-xs text-slate-600">Give your search a memorable name</p>
               </div>
 
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-300">Search Criteria</label>
                 <textarea
-                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder:text-slate-600 focus:border-blue-500 focus:outline-none transition-colors h-32 resize-none"
-                  placeholder="Enter NAICS codes, keywords, or agency names...&#10;&#10;Examples:&#10;• NAICS 541512, 541519&#10;• Keywords: cybersecurity, cloud&#10;• Agency: DoD, DARPA"
+                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder:text-slate-600 focus:border-blue-500 focus:outline-none h-32 resize-none"
+                  placeholder="NAICS codes, keywords, agency names..."
                   value={newAgent.target}
                   onChange={e => setNewAgent({ ...newAgent, target: e.target.value })}
                 />
-                <p className="text-xs text-slate-600">What type of contracts are you looking for?</p>
               </div>
 
               <div className="flex gap-3 pt-4">
-                <button
-                  onClick={handleCreateAgent}
-                  className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition-colors"
-                >
+                <button onClick={handleCreateAgent} className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold">
                   Create Search Agent
                 </button>
-                <button
-                  onClick={() => setIsAdding(false)}
-                  className="px-4 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-xl text-sm font-semibold transition-colors"
-                >
+                <button onClick={() => setIsAdding(false)} className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-sm font-semibold">
                   Cancel
                 </button>
               </div>

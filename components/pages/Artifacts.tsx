@@ -1,34 +1,77 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   FolderOpen, Download, FileText, File, Plus, Search,
-  Trash2, Edit2, X, Save, FileCode, Upload, HelpCircle
+  Trash2, Edit2, X, Save, FileCode, Upload, HelpCircle, RefreshCw
 } from 'lucide-react';
-import { Artifact } from '@/types';
-import { MOCK_OPPORTUNITIES } from '@/lib/data/mock';
 import { toast } from 'sonner';
 
-const INITIAL_ARTIFACTS: Artifact[] = [
-  { id: 'ART-001', name: 'Proposal_Draft_v1.2.docx', type: 'docx', size: '2.4 MB', date: '2025-10-24', opportunityId: '1', status: 'ready', oppName: 'Drone Swarm RFP' },
-  { id: 'ART-002', name: 'Budget_Analysis.xlsx', type: 'xlsx', size: '1.1 MB', date: '2025-10-24', opportunityId: '1', status: 'ready', oppName: 'Drone Swarm RFP' },
-  { id: 'ART-003', name: 'Technical_Volume.pdf', type: 'pdf', size: '4.8 MB', date: '2025-10-23', opportunityId: '2', status: 'ready', oppName: 'Cybersecurity RFP' },
-  { id: 'ART-004', name: 'Past_Performance.pptx', type: 'pptx', size: '12 MB', date: '2025-10-22', opportunityId: '2', status: 'processing', oppName: 'Cybersecurity RFP' },
-];
+interface Artifact {
+  id: string;
+  name: string;
+  type: string;
+  status: 'ready' | 'processing';
+  size: string;
+  date: string;
+  opportunityId?: string;
+  oppName?: string;
+}
+
+interface Opportunity {
+  id: string;
+  title: string;
+}
 
 const Artifacts: React.FC = () => {
-  const [artifacts, setArtifacts] = useState<Artifact[]>(INITIAL_ARTIFACTS);
+  const [artifacts, setArtifacts] = useState<Artifact[]>([]);
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingArtifact, setEditingArtifact] = useState<Artifact | null>(null);
   const [showHelp, setShowHelp] = useState(false);
 
-  const [formData, setFormData] = useState<Partial<Artifact>>({
+  const [formData, setFormData] = useState({
     name: '',
     type: 'pdf',
     opportunityId: '',
-    status: 'ready'
+    status: 'ready' as 'ready' | 'processing',
   });
+
+  // Fetch artifacts from API
+  const fetchArtifacts = async () => {
+    try {
+      const response = await fetch('/api/artifacts');
+      if (response.ok) {
+        const data = await response.json();
+        setArtifacts(data.artifacts || []);
+      }
+    } catch (error) {
+      console.error('Error fetching artifacts:', error);
+      toast.error('Failed to load files');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch opportunities for dropdown
+  const fetchOpportunities = async () => {
+    try {
+      const response = await fetch('/api/opportunities');
+      if (response.ok) {
+        const data = await response.json();
+        setOpportunities(data.opportunities || []);
+      }
+    } catch (error) {
+      console.error('Error fetching opportunities:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchArtifacts();
+    fetchOpportunities();
+  }, []);
 
   const getIcon = (type: string) => {
     const icons: Record<string, JSX.Element> = {
@@ -43,58 +86,78 @@ const Artifacts: React.FC = () => {
   const handleOpenModal = (art?: Artifact) => {
     if (art) {
       setEditingArtifact(art);
-      setFormData(art);
+      setFormData({
+        name: art.name,
+        type: art.type,
+        opportunityId: art.opportunityId || '',
+        status: art.status,
+      });
     } else {
       setEditingArtifact(null);
-      setFormData({ name: '', type: 'pdf', opportunityId: MOCK_OPPORTUNITIES[0]?.id || '', status: 'ready' });
+      setFormData({ name: '', type: 'pdf', opportunityId: '', status: 'ready' });
     }
     setIsModalOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.name) {
       toast.error("Please enter a file name");
       return;
     }
 
-    const selectedOpp = MOCK_OPPORTUNITIES.find(o => o.id === formData.opportunityId);
-    const dateStr = new Date().toISOString().split('T')[0];
+    try {
+      if (editingArtifact) {
+        // Update existing artifact
+        const response = await fetch(`/api/artifacts/${editingArtifact.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData),
+        });
 
-    if (editingArtifact) {
-      setArtifacts(prev => prev.map(a => {
-        if (a.id === editingArtifact.id) {
-          return {
-            ...a,
-            name: formData.name ?? a.name,
-            type: (formData.type ?? a.type) as any,
-            status: (formData.status ?? a.status) as any,
-            opportunityId: formData.opportunityId ?? a.opportunityId,
-            oppName: selectedOpp?.title || 'Unknown',
-          };
+        if (response.ok) {
+          await fetchArtifacts();
+          toast.success("File updated successfully");
         }
-        return a;
-      }));
-      toast.success("File updated successfully");
-    } else {
-      const newArt: Artifact = {
-        id: `ART-${Math.floor(Math.random() * 900) + 100}`,
-        name: formData.name as string,
-        type: (formData.type || 'pdf') as any,
-        status: (formData.status || 'ready') as any,
-        opportunityId: formData.opportunityId || '',
-        size: `${(Math.random() * 5 + 0.1).toFixed(1)} MB`,
-        date: dateStr,
-        oppName: selectedOpp?.title || 'Unknown',
-      };
-      setArtifacts(prev => [newArt, ...prev]);
-      toast.success("File added successfully");
+      } else {
+        // Create new artifact
+        const response = await fetch('/api/artifacts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: formData.name,
+            type: formData.type,
+            opportunityId: formData.opportunityId || null,
+            status: formData.status,
+          }),
+        });
+
+        if (response.ok) {
+          await fetchArtifacts();
+          toast.success("File added successfully");
+        } else {
+          const error = await response.json();
+          toast.error(error.error || "Failed to add file");
+        }
+      }
+    } catch (error) {
+      toast.error("Failed to save file");
     }
     setIsModalOpen(false);
   };
 
-  const handleDelete = (id: string) => {
-    setArtifacts(prev => prev.filter(a => a.id !== id));
-    toast.success("File deleted");
+  const handleDelete = async (id: string) => {
+    try {
+      const response = await fetch(`/api/artifacts/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setArtifacts(prev => prev.filter(a => a.id !== id));
+        toast.success("File deleted");
+      }
+    } catch (error) {
+      toast.error("Failed to delete file");
+    }
   };
 
   const handleDownload = (name: string) => {
@@ -114,6 +177,14 @@ const Artifacts: React.FC = () => {
     processing: artifacts.filter(a => a.status === 'processing').length,
   };
 
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <RefreshCw className="w-8 h-8 text-emerald-400 animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Welcome Banner */}
@@ -127,15 +198,11 @@ const Artifacts: React.FC = () => {
               <h2 className="text-xl font-bold text-white mb-2">Files & Documents</h2>
               <p className="text-slate-400 text-sm max-w-2xl">
                 <strong className="text-white">All your proposal documents in one place.</strong> Store and organize
-                proposals, past performance documents, budget spreadsheets, and other supporting files for your
-                government contract submissions.
+                proposals, past performance documents, and supporting files for your contract submissions.
               </p>
             </div>
           </div>
-          <button
-            onClick={() => setShowHelp(!showHelp)}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-          >
+          <button onClick={() => setShowHelp(!showHelp)} className="p-2 hover:bg-white/10 rounded-lg">
             <HelpCircle className="w-5 h-5 text-slate-400" />
           </button>
         </div>
@@ -143,24 +210,24 @@ const Artifacts: React.FC = () => {
         {showHelp && (
           <div className="mt-6 pt-6 border-t border-white/10 grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-sm shrink-0">1</div>
+              <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-sm">1</div>
               <div>
                 <h4 className="text-white font-semibold text-sm">Upload Files</h4>
-                <p className="text-slate-500 text-xs mt-1">Add documents like proposals, past performance, and certifications.</p>
+                <p className="text-slate-500 text-xs mt-1">Add documents like proposals and certifications.</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-sm shrink-0">2</div>
+              <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-sm">2</div>
               <div>
                 <h4 className="text-white font-semibold text-sm">Link to Opportunities</h4>
-                <p className="text-slate-500 text-xs mt-1">Associate files with specific RFPs to stay organized.</p>
+                <p className="text-slate-500 text-xs mt-1">Associate files with specific RFPs.</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-sm shrink-0">3</div>
+              <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-sm">3</div>
               <div>
                 <h4 className="text-white font-semibold text-sm">Download Anytime</h4>
-                <p className="text-slate-500 text-xs mt-1">Access your documents from anywhere when you need them.</p>
+                <p className="text-slate-500 text-xs mt-1">Access your documents when needed.</p>
               </div>
             </div>
           </div>
@@ -204,10 +271,7 @@ const Artifacts: React.FC = () => {
             className="bg-slate-900/50 border border-slate-800 rounded-xl px-10 py-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/50 w-full md:w-80"
           />
         </div>
-        <button
-          onClick={() => handleOpenModal()}
-          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 rounded-xl text-sm font-semibold transition-colors"
-        >
+        <button onClick={() => handleOpenModal()} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 rounded-xl text-sm font-semibold">
           <Plus className="w-4 h-4" />
           Add File
         </button>
@@ -231,7 +295,7 @@ const Artifacts: React.FC = () => {
               <tr key={file.id} className="hover:bg-slate-800/30 transition-colors group">
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-slate-800 border border-slate-700/50 rounded-lg group-hover:border-emerald-500/30 transition-colors">
+                    <div className="p-2 bg-slate-800 border border-slate-700/50 rounded-lg group-hover:border-emerald-500/30">
                       {getIcon(file.type)}
                     </div>
                     <div>
@@ -247,35 +311,20 @@ const Artifacts: React.FC = () => {
                 <td className="px-6 py-4 text-slate-500">{file.size}</td>
                 <td className="px-6 py-4">
                   <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold
-                    ${file.status === 'ready'
-                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                      : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                    }`}>
+                    ${file.status === 'ready' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${file.status === 'ready' ? 'bg-emerald-400' : 'bg-amber-400'}`} />
                     {file.status === 'ready' ? 'Ready' : 'Processing'}
                   </span>
                 </td>
                 <td className="px-6 py-4 text-right">
                   <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => handleDownload(file.name)}
-                      className="p-2 text-slate-500 hover:text-emerald-400 transition-colors"
-                      title="Download"
-                    >
+                    <button onClick={() => handleDownload(file.name)} className="p-2 text-slate-500 hover:text-emerald-400" title="Download">
                       <Download className="w-4 h-4" />
                     </button>
-                    <button
-                      onClick={() => handleOpenModal(file)}
-                      className="p-2 text-slate-500 hover:text-blue-400 transition-colors"
-                      title="Edit"
-                    >
+                    <button onClick={() => handleOpenModal(file)} className="p-2 text-slate-500 hover:text-blue-400" title="Edit">
                       <Edit2 className="w-4 h-4" />
                     </button>
-                    <button
-                      onClick={() => handleDelete(file.id)}
-                      className="p-2 text-slate-500 hover:text-red-400 transition-colors"
-                      title="Delete"
-                    >
+                    <button onClick={() => handleDelete(file.id)} className="p-2 text-slate-500 hover:text-red-400" title="Delete">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -287,14 +336,9 @@ const Artifacts: React.FC = () => {
                 <td colSpan={6} className="px-6 py-16 text-center">
                   <FolderOpen className="w-12 h-12 text-slate-700 mx-auto mb-4" />
                   <h4 className="text-white font-semibold mb-2">No files found</h4>
-                  <p className="text-slate-500 text-sm mb-6">
-                    {searchQuery ? 'Try a different search term' : 'Upload your first file to get started'}
-                  </p>
+                  <p className="text-slate-500 text-sm mb-6">{searchQuery ? 'Try a different search' : 'Upload your first file'}</p>
                   {!searchQuery && (
-                    <button
-                      onClick={() => handleOpenModal()}
-                      className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-semibold transition-colors"
-                    >
+                    <button onClick={() => handleOpenModal()} className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-semibold">
                       Add Your First File
                     </button>
                   )}
@@ -305,9 +349,9 @@ const Artifacts: React.FC = () => {
         </table>
       </div>
 
-      {/* Add/Edit Modal */}
+      {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm animate-in fade-in">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg p-8 space-y-6">
             <div className="flex justify-between items-center">
               <div>
@@ -334,25 +378,17 @@ const Artifacts: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-slate-300">File Type</label>
-                  <select
-                    value={formData.type}
-                    onChange={e => setFormData({ ...formData, type: e.target.value as any })}
-                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:border-emerald-500 focus:outline-none"
-                  >
+                  <select value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value })} className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:border-emerald-500 outline-none">
                     <option value="pdf">PDF</option>
                     <option value="docx">Word Document</option>
-                    <option value="xlsx">Excel Spreadsheet</option>
+                    <option value="xlsx">Excel</option>
                     <option value="pptx">PowerPoint</option>
                     <option value="txt">Text File</option>
                   </select>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-slate-300">Status</label>
-                  <select
-                    value={formData.status}
-                    onChange={e => setFormData({ ...formData, status: e.target.value as any })}
-                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:border-emerald-500 focus:outline-none"
-                  >
+                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value as any })} className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:border-emerald-500 outline-none">
                     <option value="ready">Ready</option>
                     <option value="processing">Processing</option>
                   </select>
@@ -361,32 +397,21 @@ const Artifacts: React.FC = () => {
 
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-300">Link to Opportunity</label>
-                <select
-                  value={formData.opportunityId}
-                  onChange={e => setFormData({ ...formData, opportunityId: e.target.value })}
-                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:border-emerald-500 focus:outline-none"
-                >
+                <select value={formData.opportunityId} onChange={e => setFormData({ ...formData, opportunityId: e.target.value })} className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:border-emerald-500 outline-none">
                   <option value="">No link (general file)</option>
-                  {MOCK_OPPORTUNITIES.map(opp => (
+                  {opportunities.map(opp => (
                     <option key={opp.id} value={opp.id}>{opp.title}</option>
                   ))}
                 </select>
-                <p className="text-xs text-slate-600">Optional: Link this file to a specific opportunity for better organization</p>
               </div>
             </div>
 
             <div className="flex gap-3 pt-4">
-              <button
-                onClick={handleSave}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-semibold"
-              >
+              <button onClick={handleSave} className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-semibold">
                 <Save className="w-4 h-4" />
                 {editingArtifact ? 'Save Changes' : 'Add File'}
               </button>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-sm font-semibold"
-              >
+              <button onClick={() => setIsModalOpen(false)} className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-sm font-semibold">
                 Cancel
               </button>
             </div>

@@ -81,10 +81,9 @@ export const useElevenLabs = (options: UseElevenLabsOptions = {}) => {
                         content: message.message
                     });
                 },
-                onError: (err: Error) => {
-                    console.error('ElevenLabs Error:', err);
-                    const errorMessage = err.message || 'Unknown error';
-                    setError(errorMessage);
+                onError: (errorMessage: string, context?: any) => {
+                    console.error('ElevenLabs Error:', errorMessage, context);
+                    setError(errorMessage || 'Unknown error');
                     setConnectionState(ConnectionState.ERROR);
                     options.onError?.(errorMessage);
                 },

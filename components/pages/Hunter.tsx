@@ -36,6 +36,7 @@ const Hunter: React.FC = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
   const [newAgent, setNewAgent] = useState({ name: '', target: '' });
   const [showHelp, setShowHelp] = useState(false);
 
@@ -174,6 +175,54 @@ const Hunter: React.FC = () => {
       }
     } catch (error) {
       toast.error("Failed to delete search agent");
+    }
+  };
+
+  const handleRunScan = async (id: string) => {
+    setIsScanning(true);
+    try {
+      const response = await fetch(`/api/agents/${id}/scan`, {
+        method: 'POST',
+      });
+
+      if (response.ok) {
+        // Update lastRun in local state
+        setAgents(prev => prev.map(a =>
+          a.id === id ? { ...a, lastRun: 'Just now' } : a
+        ));
+        toast.success("Scan started! Searching for matching opportunities...");
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Failed to start scan");
+      }
+    } catch (error) {
+      toast.error("Failed to start scan");
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  const handleToggleStatus = async (id: string) => {
+    const agent = agents.find(a => a.id === id);
+    if (!agent) return;
+
+    const newStatus = agent.status === 'Active' ? 'Paused' : 'Active';
+
+    try {
+      const response = await fetch(`/api/agents/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (response.ok) {
+        setAgents(prev => prev.map(a =>
+          a.id === id ? { ...a, status: newStatus } : a
+        ));
+        toast.success(`Agent ${newStatus === 'Active' ? 'resumed' : 'paused'}`);
+      }
+    } catch (error) {
+      toast.error("Failed to update agent status");
     }
   };
 
@@ -400,12 +449,30 @@ const Hunter: React.FC = () => {
                 </div>
 
                 {/* Actions */}
-                <div className="pt-6 border-t border-slate-800 flex gap-4">
+                <div className="pt-6 border-t border-slate-800 flex flex-wrap gap-3">
+                  <button
+                    onClick={() => handleRunScan(selectedAgent.id)}
+                    disabled={isScanning}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 text-white rounded-xl text-sm font-semibold"
+                  >
+                    <Search className={`w-4 h-4 ${isScanning ? 'animate-pulse' : ''}`} />
+                    {isScanning ? 'Scanning...' : 'Run Scan Now'}
+                  </button>
+                  <button
+                    onClick={() => handleToggleStatus(selectedAgent.id)}
+                    className={`px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-2
+                      ${selectedAgent.status === 'Active'
+                        ? 'bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400'
+                        : 'bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 text-green-400'
+                      }`}
+                  >
+                    {selectedAgent.status === 'Active' ? 'Pause Agent' : 'Resume Agent'}
+                  </button>
                   <button
                     onClick={() => handleDeleteAgent(selectedAgent.id)}
                     className="px-4 py-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 rounded-xl text-sm font-semibold"
                   >
-                    Delete Agent
+                    Delete
                   </button>
                 </div>
               </div>

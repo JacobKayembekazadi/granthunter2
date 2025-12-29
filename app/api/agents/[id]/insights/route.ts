@@ -29,7 +29,7 @@ export async function POST(
       Return exactly as a JSON array of objects with keys: title, description, confidence (0-100), reasoning, impact (High/Medium/Low), suggestedValue (the updated search string), marketIntel, historicalPrecedent (object with title, agency, value).`;
 
     const response = await geminiClient.models.generateContent({
-      model: 'gemini-1.5-pro',
+      model: 'gemini-2.0-flash-exp',
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -64,8 +64,8 @@ export async function POST(
     return NextResponse.json({ suggestions });
   } catch (error: any) {
     console.error('Error generating insights:', error);
-    return NextResponse.json({ 
-      error: error.message || 'Internal server error' 
+    return NextResponse.json({
+      error: error.message || 'Internal server error'
     }, { status: 500 });
   }
 }

@@ -56,7 +56,7 @@ export async function generateWithModel(options: GenerationOptions): Promise<str
         } catch (error) {
           console.warn('DeepSeek failed, falling back to Gemini:', error);
           const response = await geminiClient.models.generateContent({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-2.0-flash',
             contents: prompt,
             config: { temperature, maxOutputTokens: maxTokens },
           });
@@ -65,9 +65,9 @@ export async function generateWithModel(options: GenerationOptions): Promise<str
         break;
 
       case 'architect':
-        // Use Gemini 1.5 Pro for proposal writing
+        // Use Gemini 2.0 Flash Exp for proposal writing
         const architectResponse = await geminiClient.models.generateContent({
-          model: 'gemini-1.5-pro',
+          model: 'gemini-2.0-flash-exp',
           contents: context ? `${context}\n\n${prompt}` : prompt,
           config: { temperature, maxOutputTokens: maxTokens },
         });
